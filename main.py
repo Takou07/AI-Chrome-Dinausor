@@ -1,6 +1,7 @@
 import pygame
 import os
 import random
+import csv
 pygame.init()
 
 # Global Constants
@@ -198,10 +199,19 @@ def main():
             x_pos_bg = 0
         x_pos_bg -= game_speed
 
+    # ... (ton code précédent)
+    obstacles = []
+    death_count = 0
+    
+    # --- AJOUT POUR LA COLLECTE ---
+    data_log = [] 
+
     while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                pygame.quit()
+                quit()
 
         SCREEN.fill((255, 255, 255))
         userInput = pygame.key.get_pressed()
@@ -209,6 +219,7 @@ def main():
         player.draw(SCREEN)
         player.update(userInput)
 
+        # Logique des obstacles
         if len(obstacles) == 0:
             if random.randint(0, 2) == 0:
                 obstacles.append(SmallCactus(SMALL_CACTUS))
@@ -217,13 +228,37 @@ def main():
             elif random.randint(0, 2) == 2:
                 obstacles.append(Bird(BIRD))
 
+        # --- COLLECTE DES DONNÉES ---
+        if len(obstacles) > 0:
+            obstacle = obstacles[0]
+            # Distance X entre le dino et l'obstacle
+            distance_x = obstacle.rect.x - player.dino_rect.x
+            # Type d'obstacle (0 pour Cactus, 1 pour Bird)
+            obj_type = 1 if isinstance(obstacle, Bird) else 0
+            
+            # On définit l'action actuelle
+            # 0: Rien, 1: Saut, 2: Duck
+            action = 0
+            if userInput[pygame.K_UP]: action = 1
+            if userInput[pygame.K_DOWN]: action = 2
+
+            # On enregistre l'état
+            data_log.append([distance_x, obstacle.rect.y, game_speed, action])
+
         for obstacle in obstacles:
             obstacle.draw(SCREEN)
             obstacle.update()
             if player.dino_rect.colliderect(obstacle.rect):
-                pygame.time.delay(2000)
+                # --- SAUVEGARDE EN QUITTANT ---
+                with open("data/dino_data.csv", "a", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerows(data_log)
+                
+                pygame.time.delay(1000)
                 death_count += 1
                 menu(death_count)
+        # ...
+
 
         background()
 
